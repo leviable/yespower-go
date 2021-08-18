@@ -25,7 +25,7 @@ build:
 	$(info # Building $(APP))
 	$(info #)
 	$(info # #########################################################)
-	go build -o yespower $(LDFLAGS) yespower.go
+	GOOS=linux GOARCH=amd64 go build -o yespower $(LDFLAGS) yespower.go
 
 .PHONY: test
 test:
@@ -35,3 +35,12 @@ test:
 	$(info #)
 	$(info # #########################################################)
 	$(TEST_TOOL) test -v
+
+.PHONY: bench benchmark
+bench benchmark:
+	$(info # #########################################################)
+	$(info #)
+	$(info # Benchmarking $(APP))
+	$(info #)
+	$(info # #########################################################)
+	$(TEST_TOOL) test -bench=Yespower -benchtime 4s
