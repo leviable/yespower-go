@@ -10,9 +10,16 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
+const (
+	YESPOWER_0_5 = "YESPOWER_0_5"
+	YESPOWER_1_0 = "YESPOWER_1_0"
+)
+
 // TODO: Need to set these based on yespower version
 var PwxSimple = 2
 var PwxGather = 4
+
+const pers_bsty_magic = "BSTY"
 
 type PwxformCtx struct {
 	Salsa20Rounds int
@@ -43,6 +50,24 @@ func newPwxformCtx() *PwxformCtx {
 }
 
 func Yespower(in []byte, N, r int, persToken string) string {
+	return yespower(YESPOWER_1_0, in, N, r, persToken)
+}
+
+func Yescrypt(in []byte, N, r int, persToken string) string {
+	return yespower(YESPOWER_0_5, in, N, r, persToken)
+}
+
+func yespower(version string, in []byte, N, r int, persToken string) string {
+
+	// TODO: Add sanity check and tests for sanity
+	// /* Sanity-check parameters */
+	// if ((version != YESPOWER_0_5 && version != YESPOWER_1_0) ||
+	//     N < 1024 || N > 512 * 1024 || r < 8 || r > 32 ||
+	//     (N & (N - 1)) != 0 ||
+	//     (!pers && perslen)) {
+	// 	errno = EINVAL;
+	// 	goto fail;
+	// }
 
 	ctx := newPwxformCtx()
 
