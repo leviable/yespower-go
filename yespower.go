@@ -11,13 +11,32 @@ import (
 )
 
 const (
+	PwxSimple = 2
+	PwxGather = 4
+
+	// Yespower versions
 	YESPOWER_0_5 = "YESPOWER_0_5"
 	YESPOWER_1_0 = "YESPOWER_1_0"
-)
 
-// TODO: Need to set these based on yespower version
-var PwxSimple = 2
-var PwxGather = 4
+	// Version specific params
+	Salsa20Rounds_0_5 = 8
+	Salsa20Rounds_1_0 = 2
+	PwxRounds_0_5     = 6
+	PwxRounds_1_0     = 3
+	SWidth_0_5        = 8
+	SWidth_1_0        = 11
+
+	// Derived values
+	PwxBytes = PwxGather * PwxSimple * 8
+	PwxWords = PwxBytes / 4
+	rmin     = (PwxBytes + 127) / 128
+
+	// Runtime derived values
+	// NOTE: These are in the C reference, but not sure if they apply here
+	//
+	// #define Swidth_to_Sbytes1(Swidth) ((1 << Swidth) * PWXsimple * 8)
+	// #define Swidth_to_Smask(Swidth) (((1 << Swidth) - 1) * PWXsimple * 8)
+)
 
 const pers_bsty_magic = "BSTY"
 
@@ -32,19 +51,38 @@ type PwxformCtx struct {
 	s0, s1, s2    int
 }
 
-func newPwxformCtx() *PwxformCtx {
-	// TODO: Should calculate these for cross platform?
+func newPwxformCtx(version string) *PwxformCtx {
+
+	var (
+		salsa20Rounds, pwxRounds, sWidth, sBytes int
+	)
+	if version == YESPOWER_0_5 {
+		salsa20Rounds = Salsa20Rounds_0_5
+		pwxRounds = PwxRounds_0_5
+		sWidth = SWidth_0_5
+		sBytes = 2 * (1 << sWidth) * PwxSimple * 8
+
+	} else {
+		salsa20Rounds = Salsa20Rounds_1_0
+		pwxRounds = PwxRounds_1_0
+		sWidth = SWidth_1_0
+		sBytes = 3 * (1 << sWidth) * PwxSimple * 8
+	}
+	sMask := ((1 << sWidth) - 1) * PwxSimple * 8
+	s0 := 0
+	s1 := s0 + (1<<sWidth)*PwxSimple
+	s2 := s1 + (1<<sWidth)*PwxSimple
 	return &PwxformCtx{
-		Salsa20Rounds: 2,
-		PwxRounds:     3,
+		Salsa20Rounds: salsa20Rounds,
+		PwxRounds:     pwxRounds,
+		sWidth:        sWidth,
+		sBytes:        sBytes,
+		sMask:         sMask,
 		w:             0,
-		sWidth:        11,
-		sBytes:        98304,
-		sMask:         32752,
-		S:             make([]uint32, 24576),
-		s0:            0,
-		s1:            8192,
-		s2:            16384,
+		S:             make([]uint32, sBytes/4),
+		s0:            s0,
+		s1:            s1,
+		s2:            s2,
 	}
 
 }
@@ -69,7 +107,7 @@ func yespower(version string, in []byte, N, r int, persToken string) string {
 	// 	goto fail;
 	// }
 
-	ctx := newPwxformCtx()
+	ctx := newPwxformCtx(version)
 
 	shaHash := sha256.Sum256(in)
 
