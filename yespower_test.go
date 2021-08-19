@@ -80,7 +80,7 @@ func TestYescrypt(t *testing.T) {
 
 var result string
 
-func benchmarkYespower(b *testing.B, r, N int, pers string) {
+func bench(b *testing.B, version string, r, N int, pers string) {
 	in := []byte{0x00, 0x03, 0x06, 0x09, 0x0c, 0x0f, 0x12, 0x15,
 		0x18, 0x1b, 0x1e, 0x21, 0x24, 0x27, 0x2a, 0x2d,
 		0x30, 0x33, 0x36, 0x39, 0x3c, 0x3f, 0x42, 0x45,
@@ -94,21 +94,28 @@ func benchmarkYespower(b *testing.B, r, N int, pers string) {
 
 	var ignore string
 	for i := 0; i < b.N; i++ {
-		ignore = Yespower(in, N, r, pers)
+		ignore = yespower(version, in, N, r, pers)
 		result = ignore
 	}
 }
 
-func BenchmarkYespower_1024_32_wo_pers(b *testing.B) { benchmarkYespower(b, 1024, 32, "") }
-func BenchmarkYespower_1024_32_w_pers(b *testing.B) {
-	benchmarkYespower(b, 1024, 32, "personality test")
+// Benchmark the Yespower algo
+func BenchmarkYespower_1024_32_wo_pers(b *testing.B) { bench(b, YESPOWER_1_0, 1024, 32, "") }
+func BenchmarkYespower_1024_32_w__pers(b *testing.B) {
+	bench(b, YESPOWER_1_0, 1024, 32, "personality test")
 }
-func BenchmarkYespower_2048_8_wo_pers(b *testing.B)  { benchmarkYespower(b, 2048, 8, "") }
-func BenchmarkYespower_2048_32_wo_pers(b *testing.B) { benchmarkYespower(b, 2038, 32, "") }
-func BenchmarkYespower_4096_16_wo_pers(b *testing.B) { benchmarkYespower(b, 4096, 16, "") }
-func BenchmarkYespower_4096_32_wo_pers(b *testing.B) { benchmarkYespower(b, 4096, 32, "") }
+func BenchmarkYespower_2048_08_wo_pers(b *testing.B) { bench(b, YESPOWER_1_0, 2048, 8, "") }
+func BenchmarkYespower_2048_32_wo_pers(b *testing.B) { bench(b, YESPOWER_1_0, 2038, 32, "") }
+func BenchmarkYespower_4096_16_wo_pers(b *testing.B) { bench(b, YESPOWER_1_0, 4096, 16, "") }
+func BenchmarkYespower_4096_32_wo_pers(b *testing.B) { bench(b, YESPOWER_1_0, 4096, 32, "") }
 
-// func BenchmarkYespower(b *testing.B) {
-// 	benchmarkYespower_1024_32_wo_pers(b)
-// 	benchmarkYespower_1024_32_w_pers(b)
-// }
+// Benchmark the Yescrypt algo
+func BenchmarkYescrypt_1024_32_w__pers(b *testing.B) { bench(b, YESPOWER_0_5, 2048, 8, "Client Key") }
+func BenchmarkYescrypt_2048_08_w__pers(b *testing.B) {
+	bench(b, YESPOWER_0_5, 2048, 8, pers_bsty_magic)
+}
+func BenchmarkYescrypt_2048_32_w__pers(b *testing.B) { bench(b, YESPOWER_0_5, 2048, 8, "Client Key") }
+func BenchmarkYescrypt_4096_16_w__pers(b *testing.B) { bench(b, YESPOWER_0_5, 4096, 16, "Client Key") }
+func BenchmarkYescrypt_4096_24_w__pers(b *testing.B) { bench(b, YESPOWER_0_5, 4096, 24, "Jagaricoin") }
+func BenchmarkYescrypt_4096_32_w__pers(b *testing.B) { bench(b, YESPOWER_0_5, 4096, 32, "WaviBanana") }
+func BenchmarkYescrypt_4096_32_wo_pers(b *testing.B) { bench(b, YESPOWER_0_5, 4096, 32, "") }

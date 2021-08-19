@@ -43,4 +43,4 @@ bench benchmark:
 	$(info # Benchmarking $(APP))
 	$(info #)
 	$(info # #########################################################)
-	$(TEST_TOOL) test -bench=Yespower -benchtime 4s
+	$(TEST_TOOL) test -bench=Yes -benchtime 4s
