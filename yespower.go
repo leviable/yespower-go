@@ -1,6 +1,6 @@
-package main
+// package main
 
-// package yespower
+package yespower
 
 import (
 	"crypto/hmac"
@@ -72,6 +72,7 @@ func main() {
 	// fmt.Println(Yespower(in, 4096, 16, ""))
 	// fmt.Println(Yescrypt(in, 2048, 8, "Client Key"))
 	fmt.Println(Yescrypt(in, 4096, 32, "WaviBanana"))
+	fmt.Println(Yescrypt(in, 4096, 32, ""))
 }
 
 func newPwxformCtx(version string) (ctx *PwxformCtx) {
@@ -166,29 +167,21 @@ func yespower(version string, in []byte, N, r int, persToken string) string {
 
 	var final string
 	if ctx.Version == YESPOWER_0_5 {
-		// PBKDF2_SHA256((uint8_t *)sha256, sizeof(sha256),
-		//     (uint8_t *)B, B_size, 1, (uint8_t *)dst, sizeof(*dst));
-		fmt.Println("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
-		for _, foo := range data[:32] {
-			fmt.Printf("%02x ", foo)
-		}
-		fmt.Print("\n")
-		for _, foo := range b {
-			fmt.Printf("%02x ", foo)
-		}
-		fmt.Print("\n")
-		fmt.Println("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
 		bufSize := 32
 		buf := pbkdf2.Key(data[:32], b, PIter, bufSize, sha256.New)
-		fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-		for _, foo := range buf {
-			fmt.Printf("%02x ", foo)
-		}
-		fmt.Print("\n")
-		fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-		final = hex.EncodeToString(buf)
-	} else {
 
+		if len(persToken) > 0 {
+			h := hmac.New(sha256.New, buf)
+			h.Write([]byte(persToken))
+			out := h.Sum(nil)
+
+			shaOut := sha256.Sum256(out)
+			final = hex.EncodeToString(shaOut[:])
+		} else {
+			final = hex.EncodeToString(buf)
+		}
+
+	} else {
 		h := hmac.New(sha256.New, b[len(b)-64:])
 		h.Write(data[:32])
 		final = hex.EncodeToString(h.Sum(nil))

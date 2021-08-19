@@ -71,7 +71,7 @@ func TestYescrypt(t *testing.T) {
 		if tt.persToken == pers_bsty_magic {
 			tt.persToken = fmt.Sprintf("%s", in)
 		}
-		got := Yespower(in, tt.N, tt.r, tt.persToken)
+		got := Yescrypt(in, tt.N, tt.r, tt.persToken)
 		if got != tt.want {
 			t.Errorf("got %s want %s", got, tt.want)
 		}
