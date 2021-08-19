@@ -16,3 +16,6 @@
 
 # Package binaries
 yespower
+
+# Misc
+*.txt

@@ -1,3 +1,4 @@
+// package main
 package yespower
 
 import (
@@ -41,6 +42,7 @@ const (
 const pers_bsty_magic = "BSTY"
 
 type PwxformCtx struct {
+	Version       string
 	Salsa20Rounds int
 	PwxRounds     int
 	w             int
@@ -51,40 +53,45 @@ type PwxformCtx struct {
 	s0, s1, s2    int
 }
 
-func newPwxformCtx(version string) *PwxformCtx {
+// func main() {
+// 	in := []byte{0x00, 0x03, 0x06, 0x09, 0x0c, 0x0f, 0x12, 0x15,
+// 		0x18, 0x1b, 0x1e, 0x21, 0x24, 0x27, 0x2a, 0x2d,
+// 		0x30, 0x33, 0x36, 0x39, 0x3c, 0x3f, 0x42, 0x45,
+// 		0x48, 0x4b, 0x4e, 0x51, 0x54, 0x57, 0x5a, 0x5d,
+// 		0x60, 0x63, 0x66, 0x69, 0x6c, 0x6f, 0x72, 0x75,
+// 		0x78, 0x7b, 0x7e, 0x81, 0x84, 0x87, 0x8a, 0x8d,
+// 		0x90, 0x93, 0x96, 0x99, 0x9c, 0x9f, 0xa2, 0xa5,
+// 		0xa8, 0xab, 0xae, 0xb1, 0xb4, 0xb7, 0xba, 0xbd,
+// 		0xc0, 0xc3, 0xc6, 0xc9, 0xcc, 0xcf, 0xd2, 0xd5,
+// 		0xd8, 0xdb, 0xde, 0xe1, 0xe4, 0xe7, 0xea, 0xed}
+// 	fmt.Println(Yespower(in, 2048, 8, ""))
+// }
 
-	var (
-		salsa20Rounds, pwxRounds, sWidth, sBytes int
-	)
+func newPwxformCtx(version string) (ctx *PwxformCtx) {
+
+	ctx = &PwxformCtx{}
+
 	if version == YESPOWER_0_5 {
-		salsa20Rounds = Salsa20Rounds_0_5
-		pwxRounds = PwxRounds_0_5
-		sWidth = SWidth_0_5
-		sBytes = 2 * (1 << sWidth) * PwxSimple * 8
+		ctx.Salsa20Rounds = Salsa20Rounds_0_5
+		ctx.PwxRounds = PwxRounds_0_5
+		ctx.sWidth = SWidth_0_5
+		ctx.sBytes = 2 * (1 << ctx.sWidth) * PwxSimple * 8
 
 	} else {
-		salsa20Rounds = Salsa20Rounds_1_0
-		pwxRounds = PwxRounds_1_0
-		sWidth = SWidth_1_0
-		sBytes = 3 * (1 << sWidth) * PwxSimple * 8
+		ctx.Salsa20Rounds = Salsa20Rounds_1_0
+		ctx.PwxRounds = PwxRounds_1_0
+		ctx.sWidth = SWidth_1_0
+		ctx.sBytes = 3 * (1 << ctx.sWidth) * PwxSimple * 8
 	}
-	sMask := ((1 << sWidth) - 1) * PwxSimple * 8
-	s0 := 0
-	s1 := s0 + (1<<sWidth)*PwxSimple
-	s2 := s1 + (1<<sWidth)*PwxSimple
-	return &PwxformCtx{
-		Salsa20Rounds: salsa20Rounds,
-		PwxRounds:     pwxRounds,
-		sWidth:        sWidth,
-		sBytes:        sBytes,
-		sMask:         sMask,
-		w:             0,
-		S:             make([]uint32, sBytes/4),
-		s0:            s0,
-		s1:            s1,
-		s2:            s2,
-	}
+	ctx.sMask = ((1 << ctx.sWidth) - 1) * PwxSimple * 8
+	ctx.S = make([]uint32, ctx.sBytes/4)
+	ctx.s0 = 0
+	ctx.s1 = ctx.s0 + (1<<ctx.sWidth)*PwxSimple*2
+	ctx.s2 = ctx.s1 + (1<<ctx.sWidth)*PwxSimple*2
+	ctx.w = 0
+	ctx.Version = version
 
+	return
 }
 
 func Yespower(in []byte, N, r int, persToken string) string {
@@ -166,6 +173,7 @@ func smix(B []uint32, r, N int, V, X []uint32, ctx *PwxformCtx) {
 	// TODO: Might be able to set sBytes to x/128 directly?
 	smix1(B, 1, ctx.sBytes/128, ctx.S, X, ctx, true)
 	smix1(B, r, N, V, X, ctx, false)
+
 	smix2(B, r, N, nloop_rw, V, X, ctx)
 	smix2(B, r, N, nloop_all-nloop_rw, V, X, ctx)
 }
@@ -264,6 +272,7 @@ func blockmixSalsa(B []uint32, rounds int) {
 }
 
 func blockmixPwxform(B []uint32, ctx *PwxformCtx, r int) {
+
 	var start, stop int
 	// TODO: Need to calculate the values
 	pwxWords := 16
@@ -314,8 +323,8 @@ func pwxform(B []uint32, ctx *PwxformCtx) {
 			xl := B[j*4]
 			xh := B[j*4+1]
 
-			p0 := uint32(S0) + 2*(xl&uint32(ctx.sMask)/8)
-			p1 := uint32(S1) + 2*(xh&uint32(ctx.sMask)/8)
+			p0 := uint32(S0) + 2*((xl&uint32(ctx.sMask))/8)
+			p1 := uint32(S1) + 2*((xh&uint32(ctx.sMask))/8)
 
 			for k := 0; k < PwxSimple; k++ {
 				// TODO: probably a better/faster way to do this without rotateleft
