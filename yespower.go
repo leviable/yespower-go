@@ -1,21 +1,25 @@
-// package main
-package yespower
+package main
+
+// package yespower
 
 import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"math/bits"
 
 	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
+	PIter     = 1
 	PwxSimple = 2
 	PwxGather = 4
 
 	// Yespower versions
+	// TODO: Use an enum instead?
 	YESPOWER_0_5 = "YESPOWER_0_5"
 	YESPOWER_1_0 = "YESPOWER_1_0"
 
@@ -53,19 +57,22 @@ type PwxformCtx struct {
 	s0, s1, s2    int
 }
 
-// func main() {
-// 	in := []byte{0x00, 0x03, 0x06, 0x09, 0x0c, 0x0f, 0x12, 0x15,
-// 		0x18, 0x1b, 0x1e, 0x21, 0x24, 0x27, 0x2a, 0x2d,
-// 		0x30, 0x33, 0x36, 0x39, 0x3c, 0x3f, 0x42, 0x45,
-// 		0x48, 0x4b, 0x4e, 0x51, 0x54, 0x57, 0x5a, 0x5d,
-// 		0x60, 0x63, 0x66, 0x69, 0x6c, 0x6f, 0x72, 0x75,
-// 		0x78, 0x7b, 0x7e, 0x81, 0x84, 0x87, 0x8a, 0x8d,
-// 		0x90, 0x93, 0x96, 0x99, 0x9c, 0x9f, 0xa2, 0xa5,
-// 		0xa8, 0xab, 0xae, 0xb1, 0xb4, 0xb7, 0xba, 0xbd,
-// 		0xc0, 0xc3, 0xc6, 0xc9, 0xcc, 0xcf, 0xd2, 0xd5,
-// 		0xd8, 0xdb, 0xde, 0xe1, 0xe4, 0xe7, 0xea, 0xed}
-// 	fmt.Println(Yespower(in, 2048, 8, ""))
-// }
+func main() {
+	in := []byte{0x00, 0x03, 0x06, 0x09, 0x0c, 0x0f, 0x12, 0x15,
+		0x18, 0x1b, 0x1e, 0x21, 0x24, 0x27, 0x2a, 0x2d,
+		0x30, 0x33, 0x36, 0x39, 0x3c, 0x3f, 0x42, 0x45,
+		0x48, 0x4b, 0x4e, 0x51, 0x54, 0x57, 0x5a, 0x5d,
+		0x60, 0x63, 0x66, 0x69, 0x6c, 0x6f, 0x72, 0x75,
+		0x78, 0x7b, 0x7e, 0x81, 0x84, 0x87, 0x8a, 0x8d,
+		0x90, 0x93, 0x96, 0x99, 0x9c, 0x9f, 0xa2, 0xa5,
+		0xa8, 0xab, 0xae, 0xb1, 0xb4, 0xb7, 0xba, 0xbd,
+		0xc0, 0xc3, 0xc6, 0xc9, 0xcc, 0xcf, 0xd2, 0xd5,
+		0xd8, 0xdb, 0xde, 0xe1, 0xe4, 0xe7, 0xea, 0xed}
+	// fmt.Println(Yespower(in, 2048, 8, ""))
+	// fmt.Println(Yespower(in, 4096, 16, ""))
+	// fmt.Println(Yescrypt(in, 2048, 8, "Client Key"))
+	fmt.Println(Yescrypt(in, 4096, 32, "WaviBanana"))
+}
 
 func newPwxformCtx(version string) (ctx *PwxformCtx) {
 
@@ -118,9 +125,15 @@ func yespower(version string, in []byte, N, r int, persToken string) string {
 
 	shaHash := sha256.Sum256(in)
 
-	pIter := 1 // Is hardcoded in C reference
+	var src []byte
+	if version == YESPOWER_0_5 {
+		src = in
+	} else {
+		src = []byte(persToken)
+	}
+
 	pBufSize := 128 * r
-	buf := pbkdf2.Key(shaHash[:], []byte(persToken), pIter, pBufSize, sha256.New)
+	buf := pbkdf2.Key(shaHash[:], src, PIter, pBufSize, sha256.New)
 
 	dataSize := 128
 	data := make([]byte, dataSize)
@@ -144,33 +157,68 @@ func yespower(version string, in []byte, N, r int, persToken string) string {
 	smix(B, r, N, V, X, ctx)
 
 	// NOTE: B is now a little endian []uint32 slice, and need
-	//       to conver it to []byte slice
+	//       to conver it to []byte slice before HMAC_SHA256
 
-	b := make([]byte, 64)
-	BStart := len(B) - 16
-	for i := 0; i < 16; i++ {
-		binary.LittleEndian.PutUint32(b[i*4:], B[BStart+i])
+	b := make([]byte, len(B)*4)
+	for idx, val := range B {
+		binary.LittleEndian.PutUint32(b[idx*4:], val)
 	}
 
-	h := hmac.New(sha256.New, b)
-	h.Write(data[:32])
-	final := h.Sum(nil)
-	finalStr := hex.EncodeToString(final)
+	var final string
+	if ctx.Version == YESPOWER_0_5 {
+		// PBKDF2_SHA256((uint8_t *)sha256, sizeof(sha256),
+		//     (uint8_t *)B, B_size, 1, (uint8_t *)dst, sizeof(*dst));
+		fmt.Println("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+		for _, foo := range data[:32] {
+			fmt.Printf("%02x ", foo)
+		}
+		fmt.Print("\n")
+		for _, foo := range b {
+			fmt.Printf("%02x ", foo)
+		}
+		fmt.Print("\n")
+		fmt.Println("BBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+		bufSize := 32
+		buf := pbkdf2.Key(data[:32], b, PIter, bufSize, sha256.New)
+		fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		for _, foo := range buf {
+			fmt.Printf("%02x ", foo)
+		}
+		fmt.Print("\n")
+		fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		final = hex.EncodeToString(buf)
+	} else {
 
-	return finalStr
+		h := hmac.New(sha256.New, b[len(b)-64:])
+		h.Write(data[:32])
+		final = hex.EncodeToString(h.Sum(nil))
+	}
+
+	return final
 }
 
 func smix(B []uint32, r, N int, V, X []uint32, ctx *PwxformCtx) {
 	nloop_all := (N + 2) / 3
 	nloop_rw := nloop_all
 
-	// Make sure nloop_all is even and nloop_all is > nloop_rw
-	nloop_all += nloop_all % 2
+	// Round up to even
+	nloop_all++
+	nloop_all &= 0xfffffffe
+
+	if ctx.Version == YESPOWER_0_5 {
+		// Round down to even
+		nloop_rw &= 0xfffffffe
+	} else {
+		// Round up to even
+		nloop_rw++
+		nloop_rw &= 0xfffffffe
+	}
 
 	// Start mixing
 	// - First call to smix1 creates the S blocks
 	// - Second call to smix1 does the actual mixing
 	// TODO: Might be able to set sBytes to x/128 directly?
+
 	smix1(B, 1, ctx.sBytes/128, ctx.S, X, ctx, true)
 	smix1(B, r, N, V, X, ctx, false)
 
@@ -190,11 +238,13 @@ func smix1(B []uint32, r, N int, V, X []uint32, ctx *PwxformCtx, init bool) {
 		}
 	}
 
-	for k := 1; k < r; k++ {
-		start = (k - 1) * 32
-		stop = start + 32
-		copy(X[k*32:], X[start:stop])
-		blockmixPwxform(X[k*32:], ctx, 1)
+	if ctx.Version != YESPOWER_0_5 {
+		for k := 1; k < r; k++ {
+			start = (k - 1) * 32
+			stop = start + 32
+			copy(X[k*32:], X[start:stop])
+			blockmixPwxform(X[k*32:], ctx, 1)
+		}
 	}
 
 	for i := 0; i < N; i++ {
@@ -211,7 +261,7 @@ func smix1(B []uint32, r, N int, V, X []uint32, ctx *PwxformCtx, init bool) {
 
 		// TODO: Do this without an explicit init param
 		if init {
-			blockmixSalsa(X, 2)
+			blockmixSalsa(X, ctx.Salsa20Rounds)
 		} else {
 			blockmixPwxform(X, ctx, r)
 		}
@@ -265,7 +315,7 @@ func blockmixSalsa(B []uint32, rounds int) {
 		}
 
 		// TODO: See if we can use the x/crypto salsa208
-		salsaXOR(X, X)
+		salsaXOR(X, X, rounds)
 
 		copy(B[i*16:], X)
 	}
@@ -274,21 +324,18 @@ func blockmixSalsa(B []uint32, rounds int) {
 func blockmixPwxform(B []uint32, ctx *PwxformCtx, r int) {
 
 	var start, stop int
-	// TODO: Need to calculate the values
-	pwxWords := 16
-	pwxBytes := 64
 
-	X := make([]uint32, pwxWords)
+	X := make([]uint32, PwxWords)
 
-	r1 := 128 * r / pwxBytes
+	r1 := 128 * r / PwxBytes
 
-	start = (r1 - 1) * pwxWords
-	stop = start + pwxWords
+	start = (r1 - 1) * PwxWords
+	stop = start + PwxWords
 	copy(X, B[start:stop])
 
 	for i := 0; i < r1; i++ {
-		start = i * pwxWords
-		stop = start + pwxWords
+		start = i * PwxWords
+		stop = start + PwxWords
 		if r1 > 1 {
 			for j, val := range B[start:stop] {
 				X[j] ^= val
@@ -297,11 +344,11 @@ func blockmixPwxform(B []uint32, ctx *PwxformCtx, r int) {
 
 		pwxform(X, ctx)
 
-		copy(B[start:], X[:pwxWords])
+		copy(B[start:], X[:PwxWords])
 	}
 
-	i := (r1 - 1) * pwxBytes / 64
-	salsaXOR(B[i*16:], B[i*16:])
+	i := (r1 - 1) * PwxBytes / 64
+	salsaXOR(B[i*16:], B[i*16:], ctx.Salsa20Rounds)
 
 	// TODO: This is in the reference, but doesn't seem to run ever.
 	//       Find out whats up with that
@@ -314,6 +361,8 @@ func blockmixPwxform(B []uint32, ctx *PwxformCtx, r int) {
 	// 	salsaXOR(B[i*16:], B[i*16:])
 	// }
 }
+
+var startPrinting = false
 
 func pwxform(B []uint32, ctx *PwxformCtx) {
 	w := ctx.w
@@ -342,7 +391,7 @@ func pwxform(B []uint32, ctx *PwxformCtx) {
 				B[j*4+k*2+1] = uint32(x >> 32)
 			}
 
-			if i == 0 || j < (PwxGather/2) {
+			if ctx.Version != YESPOWER_0_5 && (i == 0 || j < (PwxGather/2)) {
 				if j&1 != 0 {
 					for k := 0; k < PwxSimple; k++ {
 						ctx.S[S1+w] = B[j*4+k*2]
@@ -359,10 +408,12 @@ func pwxform(B []uint32, ctx *PwxformCtx) {
 		}
 	}
 
-	ctx.s0 = S2
-	ctx.s1 = S0
-	ctx.s2 = S1
-	ctx.w = w & ((1<<(ctx.sWidth+1))*PwxSimple - 1)
+	if ctx.Version != YESPOWER_0_5 {
+		ctx.s0 = S2
+		ctx.s1 = S0
+		ctx.s2 = S1
+		ctx.w = w & ((1<<(ctx.sWidth+1))*PwxSimple - 1)
+	}
 }
 
 func integerify(X []uint32, r int) uint32 {
@@ -382,7 +433,7 @@ func wrap(x uint32, i int) int {
 // TODO: See if you can use the x/crypto implementation of either
 //       salsa20 or salsa20/8. Might need to convert from 16 byte
 //       to 64 byte?
-func salsaXOR(in, out []uint32) {
+func salsaXOR(in, out []uint32, rounds int) {
 	copy(out, in)
 
 	x := make([]uint32, 16)
@@ -409,7 +460,7 @@ func salsaXOR(in, out []uint32) {
 	x14 := x[14]
 	x15 := x[15]
 
-	for i := 0; i < 2; i += 2 {
+	for i := 0; i < rounds; i += 2 {
 		x4 ^= bits.RotateLeft32(x0+x12, 7)
 		x8 ^= bits.RotateLeft32(x4+x0, 9)
 		x12 ^= bits.RotateLeft32(x8+x4, 13)

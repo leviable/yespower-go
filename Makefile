@@ -27,8 +27,8 @@ build:
 	$(info # #########################################################)
 	GOOS=linux GOARCH=amd64 go build -o yespower $(LDFLAGS) yespower.go
 
-.PHONY: test
-test:
+.PHONY: test tests
+test tests:
 	$(info # #########################################################)
 	$(info #)
 	$(info # Testing $(APP))
