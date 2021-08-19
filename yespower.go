@@ -68,9 +68,9 @@ func main() {
 		0xa8, 0xab, 0xae, 0xb1, 0xb4, 0xb7, 0xba, 0xbd,
 		0xc0, 0xc3, 0xc6, 0xc9, 0xcc, 0xcf, 0xd2, 0xd5,
 		0xd8, 0xdb, 0xde, 0xe1, 0xe4, 0xe7, 0xea, 0xed}
-	// fmt.Println(Yespower(in, 2048, 8, ""))
-	// fmt.Println(Yespower(in, 4096, 16, ""))
-	// fmt.Println(Yescrypt(in, 2048, 8, "Client Key"))
+	fmt.Println(Yespower(in, 2048, 8, ""))
+	fmt.Println(Yespower(in, 4096, 16, ""))
+	fmt.Println(Yescrypt(in, 2048, 8, "Client Key"))
 	fmt.Println(Yescrypt(in, 4096, 32, "WaviBanana"))
 	fmt.Println(Yescrypt(in, 4096, 32, ""))
 }
@@ -354,8 +354,6 @@ func blockmixPwxform(B []uint32, ctx *PwxformCtx, r int) {
 	// 	salsaXOR(B[i*16:], B[i*16:])
 	// }
 }
-
-var startPrinting = false
 
 func pwxform(B []uint32, ctx *PwxformCtx) {
 	w := ctx.w

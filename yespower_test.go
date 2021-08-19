@@ -80,8 +80,7 @@ func TestYescrypt(t *testing.T) {
 
 var result string
 
-func BenchmarkYespower(b *testing.B) {
-
+func benchmarkYespower(b *testing.B, r, N int, pers string) {
 	in := []byte{0x00, 0x03, 0x06, 0x09, 0x0c, 0x0f, 0x12, 0x15,
 		0x18, 0x1b, 0x1e, 0x21, 0x24, 0x27, 0x2a, 0x2d,
 		0x30, 0x33, 0x36, 0x39, 0x3c, 0x3f, 0x42, 0x45,
@@ -93,9 +92,23 @@ func BenchmarkYespower(b *testing.B) {
 		0xc0, 0xc3, 0xc6, 0xc9, 0xcc, 0xcf, 0xd2, 0xd5,
 		0xd8, 0xdb, 0xde, 0xe1, 0xe4, 0xe7, 0xea, 0xed}
 
-	var r string
+	var ignore string
 	for i := 0; i < b.N; i++ {
-		r = Yespower(in, 1024, 32, "")
-		result = r
+		ignore = Yespower(in, N, r, pers)
+		result = ignore
 	}
 }
+
+func BenchmarkYespower_1024_32_wo_pers(b *testing.B) { benchmarkYespower(b, 1024, 32, "") }
+func BenchmarkYespower_1024_32_w_pers(b *testing.B) {
+	benchmarkYespower(b, 1024, 32, "personality test")
+}
+func BenchmarkYespower_2048_8_wo_pers(b *testing.B)  { benchmarkYespower(b, 2048, 8, "") }
+func BenchmarkYespower_2048_32_wo_pers(b *testing.B) { benchmarkYespower(b, 2038, 32, "") }
+func BenchmarkYespower_4096_16_wo_pers(b *testing.B) { benchmarkYespower(b, 4096, 16, "") }
+func BenchmarkYespower_4096_32_wo_pers(b *testing.B) { benchmarkYespower(b, 4096, 32, "") }
+
+// func BenchmarkYespower(b *testing.B) {
+// 	benchmarkYespower_1024_32_wo_pers(b)
+// 	benchmarkYespower_1024_32_w_pers(b)
+// }
